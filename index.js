@@ -1,49 +1,61 @@
 import readline from "readline";
 import tty from "tty";
-
 import { CHOICES, TIMEOUT } from "./config.js";
 
-// Configurable options
-const actions = CHOICES.map((choice) => choice.action);
-const buttons = CHOICES.map((choice) => choice.key);
-const game = CHOICES.map((choice) => choice.game);
-
-// Stats variables
 let correctCount = 0;
 let wrongCount = 0;
 let missedCount = 0;
 const actionStats = {};
 
-const getGame = (action) => {
-  for (const choice of CHOICES) {
-    if (choice.action === action) {
-      return choice.game;
-    }
-  }
-};
+const getRandomChoice = () => {
+  const randomIndex = Math.floor(Math.random() * CHOICES.length);
+  const randomChoice = CHOICES[randomIndex];
 
-const getRandomaction = (arr) => {
-  const randomIndex = Math.floor(Math.random() * arr.length);
-  return arr[randomIndex];
+  return {
+    selectedAction: randomChoice.action,
+    selectedGame: randomChoice.game,
+    buttonToPress: randomChoice.key,
+  };
 };
 
 const displayPrompt = () => {
-  const actionToShow = getRandomaction(actions);
-  const game = getGame(actionToShow);
-  const buttonIndex = actions.indexOf(actionToShow);
-  const buttonToPress = buttons[buttonIndex];
+  const { selectedAction, selectedGame, buttonToPress } = getRandomChoice();
 
-  console.log(`Press the button corresponding to: ${actionToShow} in ${game}`);
+  console.log(`Press the button corresponding to: ${selectedAction} in ${selectedGame}`);
   console.log("Press 0 to exit.");
 
   let missedTimerId;
+
   const startMissedTimer = () => {
     missedTimerId = setTimeout(() => {
       missedCount++;
       console.log("Time is up! You missed it.");
-      updateactionStats(actionToShow, null); // Increment missed count
-      displayPrompt(); // Restart the loop
+      updateActionStats(selectedAction, null);
+      displayPrompt();
     }, TIMEOUT);
+  };
+
+  const handleUserInput = (key) => {
+    clearTimeout(missedTimerId);
+    const userInput = key.toString().toLowerCase();
+
+    if (userInput === "0") {
+      displayStats();
+      process.exit();
+    }
+
+    if (userInput === buttonToPress) {
+      correctCount++;
+      console.log("Correct!");
+      updateActionStats(selectedAction, true);
+    } else {
+      wrongCount++;
+      console.log("Wrong button. Try again.");
+      updateActionStats(selectedAction, false);
+    }
+
+    displayPrompt();
+    startMissedTimer();
   };
 
   const stdin = process.stdin;
@@ -52,34 +64,14 @@ const displayPrompt = () => {
     stdin.setRawMode(true);
   }
 
-  startMissedTimer(); // Start the missed timer
+  startMissedTimer();
 
-  stdin.on("data", (key) => {
-    const userInput = key.toString().toLowerCase();
-    if (userInput === "0") {
-      clearTimeout(missedTimerId);
-      displayStats();
-      process.exit();
-    } else if (userInput === buttonToPress) {
-      clearTimeout(missedTimerId);
-      correctCount++;
-      console.log("Correct!");
-      updateactionStats(actionToShow, true);
-      displayPrompt(); // Restart the loop
-    } else {
-      console.log("Wrong button. Try again.");
-      wrongCount++;
-      updateactionStats(actionToShow, false);
-    }
-
-    startMissedTimer(); // Restart the missed timer for the next round
-  });
-
+  stdin.on("data", handleUserInput);
   readline.emitKeypressEvents(stdin);
   stdin.resume();
 };
 
-const updateactionStats = (action, isCorrect) => {
+const updateActionStats = (action, isCorrect) => {
   if (!actionStats[action]) {
     actionStats[action] = { correct: 0, wrong: 0, missed: 0 };
   }
@@ -106,7 +98,8 @@ const displayStats = () => {
   console.log(`Accuracy: ${accuracy.toFixed(2)}%\n`);
 
   console.log("Action Stats:");
-  for (const action of actions) {
+  for (const choice of CHOICES) {
+    const { action } = choice;
     const stats = actionStats[action] || { correct: 0, wrong: 0, missed: 0 };
     const actionAccuracy =
       stats.correct + stats.wrong === 0
