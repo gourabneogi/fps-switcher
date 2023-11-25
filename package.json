@@ -1,0 +1,16 @@
+{
+  "name": "fps-switcher",
+  "version": "1.0.0",
+  "description": "practice with fps switcher and get better",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "author": "Gourab Neogi",
+  "license": "ISC",
+  "devDependencies": {
+    "eslint": "^8.54.0",
+    "prettier": "^2.8.8"
+  }
+}
